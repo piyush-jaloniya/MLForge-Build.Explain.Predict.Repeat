@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSessionStore, useUIStore } from '../store'
+import DropdownSelect from '../components/DropdownSelect'
 import PlotlyChart from '../components/PlotlyChart'
 import api from '../api/client'
 
@@ -28,8 +29,8 @@ export default function HyperoptPage() {
     }
   }, [])
 
-  if (!session) return <div style={{ padding: '2rem', textAlign: 'center' }}>No session. <a href="/" style={{ color: '#4f46e5' }}>Upload →</a></div>
-  if (!session.target_col) return <div style={{ padding: '2rem', textAlign: 'center' }}>No feature selection. <a href="/preprocess" style={{ color: '#4f46e5' }}>Preprocess →</a></div>
+  if (!session) return <div className="hyperopt-shell text-center">No session. <a href="/" className="text-brand-600 hover:text-brand-700">Upload →</a></div>
+  if (!session.target_col) return <div className="hyperopt-shell text-center">No feature selection. <a href="/preprocess" className="text-brand-600 hover:text-brand-700">Preprocess →</a></div>
 
   const startJob = async () => {
     setLoading(true)
@@ -78,61 +79,60 @@ export default function HyperoptPage() {
     }
   }
 
-  const statusColor = (s: string) => ({ complete: '#059669', running: '#4f46e5', queued: '#d97706', failed: '#dc2626' })[s] || '#6b7280'
+  const statusClass = (s: string) => ({
+    complete: 'text-emerald-600',
+    running: 'text-brand-600',
+    queued: 'text-amber-600',
+    failed: 'text-red-600',
+  })[s] || 'text-slate-500'
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 1100, margin: '0 auto' }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Hyperparameter Tuning</h1>
-      <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Optuna TPE search — {session.feature_cols.length} features → {session.target_col} ({session.task_type})</p>
+    <div className="hyperopt-shell">
+      <h1 className="hyperopt-title">Hyperparameter Tuning</h1>
+      <p className="hyperopt-subtitle">Optuna TPE search — {session.feature_cols.length} features → {session.target_col} ({session.task_type})</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
-        <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.25rem' }}>
-          <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>Configure Search</h3>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={lbl}>Model</label>
-            <select value={modelName} onChange={e => setModelName(e.target.value)} style={sel}>
-              {MODELS.map(m => <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>)}
-            </select>
+      <div className="hyperopt-grid">
+        <div className="hyperopt-sidebar">
+          <h3 className="hyperopt-sidebar-title">Configure Search</h3>
+          <div className="hyperopt-field">
+            <label className="hyperopt-label">Model</label>
+            <DropdownSelect
+              value={modelName}
+              onChange={setModelName}
+              ariaLabel="Model"
+              options={MODELS.map(m => ({ value: m, label: m.replace(/_/g, ' ') }))}
+              buttonClassName="w-full"
+            />
           </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={lbl}>Trials: {nTrials}</label>
+          <div className="hyperopt-field">
+            <label className="hyperopt-label">Trials: {nTrials}</label>
             <input type="range" min={10} max={100} step={5} value={nTrials}
-              onChange={e => setNTrials(+e.target.value)} style={{ width: '100%' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#9ca3af' }}>
+              onChange={e => setNTrials(+e.target.value)} className="hyperopt-range" aria-label="Trial count" />
+            <div className="hyperopt-range-meta">
               <span>10</span><span>100</span>
             </div>
           </div>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={lbl}>Timeout: {timeoutSecs}s</label>
+          <div className="hyperopt-field">
+            <label className="hyperopt-label">Timeout: {timeoutSecs}s</label>
             <input type="range" min={30} max={600} step={30} value={timeoutSecs}
-              onChange={e => setTimeoutSecs(+e.target.value)} style={{ width: '100%' }} />
+              onChange={e => setTimeoutSecs(+e.target.value)} className="hyperopt-range" aria-label="Timeout seconds" />
           </div>
-          <button onClick={startJob} disabled={loading} style={{
-            width: '100%', padding: '0.875rem', background: '#4f46e5', color: 'white',
-            border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 700,
-            opacity: loading ? 0.5 : 1,
-          }}>
+          <button onClick={startJob} disabled={loading} className="hyperopt-start-btn">
             {loading ? 'Starting…' : 'Start Search'}
           </button>
 
           {jobs.length > 0 && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <h4 style={{ fontWeight: 700, marginBottom: '0.5rem', fontSize: '0.8rem', color: '#6b7280', textTransform: 'uppercase' }}>Jobs</h4>
+            <div className="hyperopt-jobs-wrap">
+              <h4 className="hyperopt-jobs-title">Jobs</h4>
               {jobs.map(j => (
-                <div key={j.job_id} onClick={() => setActiveJob(j)} style={{
-                  padding: '0.5rem', border: '1px solid', borderColor: activeJob?.job_id === j.job_id ? '#4f46e5' : '#e5e7eb',
-                  borderRadius: 6, marginBottom: '0.4rem', cursor: 'pointer',
-                  background: activeJob?.job_id === j.job_id ? '#eff6ff' : 'white',
-                }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{j.model_name}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#6b7280' }}>
-                    <span style={{ color: statusColor(j.status) }}>{j.status}</span>
+                <div key={j.job_id} onClick={() => setActiveJob(j)} className={cn('hyperopt-job', activeJob?.job_id === j.job_id && 'hyperopt-job--active')}>
+                  <div className="hyperopt-job-title">{j.model_name}</div>
+                  <div className="hyperopt-job-meta">
+                    <span className={statusClass(j.status)}>{j.status}</span>
                     <span>{j.trials_done}/{j.n_trials}</span>
                   </div>
                   {j.status === 'running' && (
-                    <div style={{ height: 4, background: '#e5e7eb', borderRadius: 2, marginTop: '0.3rem' }}>
-                      <div style={{ height: '100%', width: `${j.progress_pct || 0}%`, background: '#4f46e5', borderRadius: 2 }} />
-                    </div>
+                    <progress className="hyperopt-progress" value={j.progress_pct || 0} max={100} />
                   )}
                 </div>
               ))}
@@ -142,58 +142,56 @@ export default function HyperoptPage() {
 
         <div>
           {activeJob && (
-            <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.25rem', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>
-                {activeJob.model_name} — <span style={{ color: statusColor(activeJob.status) }}>{activeJob.status}</span>
+            <div className="hyperopt-main-card">
+              <h3 className="hyperopt-main-title">
+                {activeJob.model_name} — <span className={statusClass(activeJob.status)}>{activeJob.status}</span>
               </h3>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <div className="hyperopt-stats">
                 {[
                   { label: 'Trials Done', value: `${activeJob.trials_done} / ${activeJob.n_trials}` },
                   { label: 'Progress', value: `${activeJob.progress_pct ?? 0}%` },
                   { label: 'Best Score', value: activeJob.current_best != null ? (activeJob.current_best * 100).toFixed(2) + '%' : '—' },
                 ].map(({ label, value }) => (
-                  <div key={label} style={{ background: '#f9fafb', padding: '0.75rem 1rem', borderRadius: 8, textAlign: 'center', minWidth: 100 }}>
-                    <div style={{ fontWeight: 700, fontSize: '1.25rem', color: '#4f46e5' }}>{value}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{label}</div>
+                  <div key={label} className="hyperopt-stat">
+                    <div className="hyperopt-stat-value">{value}</div>
+                    <div className="hyperopt-stat-label">{label}</div>
                   </div>
                 ))}
               </div>
               {(activeJob.status === 'queued' || activeJob.status === 'running') && (
-                <div style={{ height: 8, background: '#e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${activeJob.progress_pct ?? 0}%`, background: '#4f46e5', transition: 'width 0.5s', borderRadius: 4 }} />
-                </div>
+                <progress className="hyperopt-progress-lg w-full" value={activeJob.progress_pct ?? 0} max={100} />
               )}
             </div>
           )}
 
           {result && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-              <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.25rem' }}>
-                <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Best Hyperparameters</h3>
-                <div style={{ background: '#f0fdf4', padding: '0.75rem', borderRadius: 6, marginBottom: '0.75rem' }}>
-                  <span style={{ fontWeight: 700, color: '#059669' }}>
+            <div className="hyperopt-result-grid">
+              <div className="hyperopt-result-panel">
+                <h3 className="hyperopt-result-title">Best Hyperparameters</h3>
+                <div className="hyperopt-score">
+                  <span className="hyperopt-score-value">
                     Best {result.metric}: {(result.best_score * 100).toFixed(3)}%
                   </span>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{result.n_trials} trials completed</div>
+                  <div className="hyperopt-score-note">{result.n_trials} trials completed</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <div className="hyperopt-params">
                   {Object.entries(result.best_params || {}).map(([k, v]) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0.5rem', background: '#f9fafb', borderRadius: 4, fontSize: '0.8rem' }}>
-                      <span style={{ color: '#6b7280' }}>{k}</span>
-                      <span style={{ fontWeight: 600 }}>{String(v)}</span>
+                    <div key={k} className="hyperopt-param-row">
+                      <span className="hyperopt-param-key">{k}</span>
+                      <span className="hyperopt-param-value">{String(v)}</span>
                     </div>
                   ))}
                   {Object.keys(result.best_params || {}).length === 0 && (
-                    <p style={{ color: '#9ca3af', fontSize: '0.8rem' }}>No tunable parameters for this model.</p>
+                    <p className="hyperopt-none">No tunable parameters for this model.</p>
                   )}
                 </div>
               </div>
 
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ fontSize: '2rem' }}>Ready</div>
-                <div style={{ fontWeight: 700, textAlign: 'center' }}>Ready to train with best params!</div>
-                <div style={{ fontSize: '0.8rem', color: '#6b7280', textAlign: 'center' }}>Go to Train and use these hyperparameters to get the optimised model.</div>
-                <a href="/train" style={{ padding: '0.75rem 1.5rem', background: '#4f46e5', color: 'white', borderRadius: 8, fontWeight: 700, textDecoration: 'none', fontSize: '0.875rem' }}>
+              <div className="hyperopt-train-panel">
+                <div className="hyperopt-train-emoji">Ready</div>
+                <div className="hyperopt-train-text">Ready to train with best params!</div>
+                <div className="hyperopt-train-note">Go to Train and use these hyperparameters to get the optimised model.</div>
+                <a href="/train" className="hyperopt-train-link">
                   → Train Optimised Model
                 </a>
               </div>
@@ -201,15 +199,15 @@ export default function HyperoptPage() {
           )}
 
           {historyChart && (
-            <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.25rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Optimization History</h3>
+            <div className="hyperopt-history-card">
+              <h3 className="hyperopt-history-title">Optimization History</h3>
               <PlotlyChart figure={historyChart} height={350} />
             </div>
           )}
 
           {!activeJob && (
-            <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: '3rem', textAlign: 'center', color: '#9ca3af' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>Search</div>
+            <div className="hyperopt-empty-state">
+              <div className="hyperopt-empty-state-emoji">Search</div>
               <div>Configure and start a hyperparameter search to find the best settings for your model.</div>
             </div>
           )}
@@ -218,6 +216,3 @@ export default function HyperoptPage() {
     </div>
   )
 }
-
-const lbl: React.CSSProperties = { display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#374151' }
-const sel: React.CSSProperties = { width: '100%', padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.8rem', background: 'white' }

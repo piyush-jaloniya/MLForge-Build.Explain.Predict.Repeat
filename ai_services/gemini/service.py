@@ -7,17 +7,40 @@ auto-report, global assistant chat.
 from __future__ import annotations
 import json
 import logging
-import os
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _format_error(exc: Exception) -> str:
+    """Return a short user-facing reason for AI failures."""
+    message = str(exc).strip() or exc.__class__.__name__
+    upper_message = message.upper()
+
+    if "GEMINI_API_KEY NOT SET" in upper_message:
+        return "GEMINI_API_KEY is not configured on the backend."
+    if "RESOURCE_EXHAUSTED" in upper_message or "429" in upper_message:
+        return "Gemini quota is unavailable for this project. Check billing, rate limits, or project tier."
+    if "PERMISSION_DENIED" in upper_message or "403" in upper_message:
+        return "Gemini access was denied for this project or API key."
+    if "UNAUTHENTICATED" in upper_message or "401" in upper_message or "API KEY" in upper_message:
+        return "The Gemini API key is invalid or not authorized."
+    if "CONNECTERROR" in upper_message or "TIMED OUT" in upper_message:
+        return "The backend could not reach the Gemini API."
+
+    return message.splitlines()[0]
 
 # ── Client factory ─────────────────────────────────────────────────────────
 
 def _get_client():
     """Return a configured google.genai client."""
     import google.genai as genai
-    api_key = os.getenv("GEMINI_API_KEY", "")
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parents[2]))
+    from config import get_settings
+
+    api_key = get_settings().gemini_api_key
     if not api_key:
         raise ValueError("GEMINI_API_KEY not set")
     return genai.Client(api_key=api_key)
@@ -40,13 +63,13 @@ def _call(prompt: str, system: str = "", max_tokens: int = 800) -> str:
 
 
 def _safe_call(prompt: str, system: str = "", fallback: str = "AI analysis unavailable.",
-               max_tokens: int = 800) -> str:
-    """Like _call but returns fallback on any error."""
+               max_tokens: int = 800) -> Dict[str, Any]:
+    """Like _call but returns structured success/error details."""
     try:
-        return _call(prompt, system=system, max_tokens=max_tokens)
+        return {"ok": True, "text": _call(prompt, system=system, max_tokens=max_tokens), "error": None}
     except Exception as e:
         logger.warning(f"Gemini call failed: {e}")
-        return fallback
+        return {"ok": False, "text": fallback, "error": _format_error(e)}
 
 
 # ── Context builders (keep prompts under 2KB) ──────────────────────────────
@@ -72,7 +95,7 @@ def _metrics_context(metrics: Dict, task_type: str) -> str:
 
 # ── Public AI functions ─────────────────────────────────────────────────────
 
-def narrate_schema(column_info: List[Dict], filename: str) -> str:
+def narrate_schema(column_info: List[Dict], filename: str) -> Dict[str, Any]:
     """Describe the dataset schema in plain English."""
     schema = _schema_context(column_info)
     n_cols = len(column_info)
@@ -93,7 +116,7 @@ def narrate_schema(column_info: List[Dict], filename: str) -> str:
 
 def narrate_preprocessing_step(step_type: str, params: Dict,
                                 rows_before: int, rows_after: int,
-                                affected_columns: List[str]) -> str:
+                                affected_columns: List[str]) -> Dict[str, Any]:
     """One-sentence narration of a preprocessing step."""
     return _safe_call(
         prompt=(
@@ -108,7 +131,7 @@ def narrate_preprocessing_step(step_type: str, params: Dict,
     )
 
 
-def suggest_features(column_info: List[Dict], task_type: str, target_col: str) -> str:
+def suggest_features(column_info: List[Dict], task_type: str, target_col: str) -> Dict[str, Any]:
     """AI-powered feature engineering suggestions."""
     schema = _schema_context(column_info[:15])
     return _safe_call(
@@ -124,7 +147,7 @@ def suggest_features(column_info: List[Dict], task_type: str, target_col: str) -
 
 
 def recommend_model(task_type: str, n_rows: int, n_features: int,
-                    column_info: List[Dict], target_col: str) -> str:
+                    column_info: List[Dict], target_col: str) -> Dict[str, Any]:
     """RL-advisor-style model recommendation."""
     cat_count = sum(1 for c in column_info if c.get("col_type") == "categorical")
     null_count = sum(1 for c in column_info if c.get("null_pct", 0) > 0)
@@ -144,7 +167,7 @@ def recommend_model(task_type: str, n_rows: int, n_features: int,
 
 
 def interpret_metrics(metrics: Dict, task_type: str, model_name: str,
-                      feature_importance: Dict[str, float]) -> str:
+                      feature_importance: Dict[str, float]) -> Dict[str, Any]:
     """Plain-English interpretation of model metrics."""
     ctx = _metrics_context(metrics, task_type)
     top_features = list(feature_importance.items())[:5]
@@ -161,7 +184,7 @@ def interpret_metrics(metrics: Dict, task_type: str, model_name: str,
     )
 
 
-def narrate_chart(chart_type: str, chart_insights: Dict[str, Any]) -> str:
+def narrate_chart(chart_type: str, chart_insights: Dict[str, Any]) -> Dict[str, Any]:
     """Auto-generate a plain-English chart description."""
     return _safe_call(
         prompt=(
@@ -184,7 +207,7 @@ def generate_report(
     task_type: str,
     metrics: Dict,
     feature_importance: Dict[str, float],
-) -> str:
+) -> Dict[str, Any]:
     """Generate a structured Markdown ML report."""
     schema_summary = _schema_context(column_info[:10])
     metrics_ctx = _metrics_context(metrics, task_type)
@@ -217,7 +240,7 @@ def chat(
     user_message: str,
     history: List[Dict[str, str]],
     context: Dict[str, Any],
-) -> str:
+) -> Dict[str, Any]:
     """
     General-purpose AI assistant chat.
     context may contain: session info, current metrics, feature cols, etc.
@@ -255,7 +278,7 @@ def explain_prediction(
     confidence: Optional[float],
     model_name: str,
     top_shap: Optional[Dict[str, float]],
-) -> str:
+) -> Dict[str, Any]:
     """Explain a single prediction in plain English."""
     shap_str = ""
     if top_shap:
@@ -273,4 +296,34 @@ def explain_prediction(
         ),
         system="You are an AI explainability assistant. Be clear and jargon-free.",
         max_tokens=200,
+    )
+
+
+def compare_runs(rows: List[Dict[str, Any]], primary_metric: str, task_type: str) -> Dict[str, Any]:
+    """Explain why one run beats another and what to try next."""
+    compact_rows = []
+    for row in rows[:5]:
+        metrics = {k: round(v, 4) for k, v in row.get("metrics", {}).items() if isinstance(v, (int, float))}
+        compact_rows.append({
+            "model_name": row.get("model_name"),
+            "training_time_s": row.get("training_time_s"),
+            "metrics": metrics,
+        })
+
+    return _safe_call(
+        prompt=(
+            f"Task type: {task_type}\n"
+            f"Primary metric: {primary_metric}\n"
+            f"Compared runs: {json.dumps(compact_rows, indent=2)}\n\n"
+            "Compare the best run against the next strongest run. "
+            "Explain why the winner likely beat the runner-up, mention any speed vs quality tradeoff, "
+            "and give 3 concrete next experiments to try. "
+            "Keep it concise and practical."
+        ),
+        system=(
+            "You are a senior ML reviewer. "
+            "Focus on model comparison, tradeoffs, and next-step experimentation. "
+            "Be direct, evidence-based, and concise."
+        ),
+        max_tokens=500,
     )

@@ -17,8 +17,8 @@ class Settings(BaseSettings):
 
     # Gemini AI
     gemini_api_key: str = ""
-    gemini_flash_model: str = "gemini-1.5-flash"
-    gemini_pro_model: str = "gemini-1.5-pro"
+    gemini_flash_model: str = "gemini-2.5-flash"
+    gemini_pro_model: str = "gemini-2.5-pro"
     gemini_max_context_bytes: int = 2048
 
     # Database

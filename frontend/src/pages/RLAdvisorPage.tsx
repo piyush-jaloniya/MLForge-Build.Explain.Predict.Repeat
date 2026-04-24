@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useSessionStore, useUIStore } from '../store'
+import DropdownSelect from '../components/DropdownSelect'
 import api from '../api/client'
 import { cn } from '../lib/utils'
 import { Sparkles, BrainCircuit, Loader2, ArrowRight, Activity, Cpu } from 'lucide-react'
@@ -73,16 +74,16 @@ export default function RLAdvisorPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-6">
-      
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3 tracking-tight">
-             <Sparkles className="text-brand-500" size={32} />
-             RL Model Advisor
+            <Sparkles className="text-brand-500" size={32} />
+            RL Model Advisor
           </h1>
           <p className="text-slate-500 mt-2 font-medium max-w-2xl">
-             Thompson Sampling bandit dynamically learns from your training results to recommend the best algorithms for your specific dataset.
+            Thompson Sampling bandit dynamically learns from your training results to recommend the best algorithms for your specific dataset.
           </p>
         </div>
       </div>
@@ -91,23 +92,26 @@ export default function RLAdvisorPage() {
       <div className="bg-surface border border-border rounded-2xl p-4 flex flex-wrap gap-4 items-center shadow-sm">
         <div className="flex items-center gap-3 whitespace-nowrap">
           <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Task Type</label>
-          <select 
-            value={taskType} onChange={e => setTaskType(e.target.value)}
-            className="px-4 py-2.5 bg-surface-hover border border-border rounded-xl text-sm font-medium focus:outline-none focus:border-brand-500 transition-all font-sans"
-          >
-            <option value="classification">Classification</option>
-            <option value="regression">Regression</option>
-          </select>
+          <DropdownSelect
+            value={taskType}
+            onChange={setTaskType}
+            ariaLabel="Task type"
+            options={[
+              { value: 'classification', label: 'Classification' },
+              { value: 'regression', label: 'Regression' },
+            ]}
+            buttonClassName="px-4 py-2.5"
+          />
         </div>
-        
-        <button 
-          onClick={loadRecs} disabled={loading} 
+
+        <button
+          onClick={loadRecs} disabled={loading}
           className="flex items-center gap-2 px-6 py-2.5 bg-brand-500 hover:bg-brand-600 border border-brand-400 text-white rounded-xl text-sm font-bold transition-all shadow-sm active:scale-[0.98] disabled:opacity-50"
         >
           {loading ? <Loader2 size={18} className="animate-spin" /> : <BrainCircuit size={18} />}
           {loading ? 'Analyzing...' : 'Generate Recommendations'}
         </button>
-        
+
         {session.feature_cols.length > 0 && (
           <div className="ml-auto flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-semibold text-slate-500 uppercase tracking-widest">
             <span>{session.n_rows.toLocaleString()} Rows</span>
@@ -125,7 +129,7 @@ export default function RLAdvisorPage() {
 
       {recs.length > 0 && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-          
+
           {/* Top Recommendations */}
           <div>
             <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
@@ -133,13 +137,13 @@ export default function RLAdvisorPage() {
             </h2>
             <div className="space-y-4">
               {recs.map((rec, i) => (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
-                  key={rec.model_name} 
+                  key={rec.model_name}
                   className={cn(
                     "border rounded-2xl p-5 shadow-sm transition-all group",
-                    i === 0 
-                      ? "bg-amber-500/5 border-amber-500/30 dark:border-amber-500/20" 
+                    i === 0
+                      ? "bg-amber-500/5 border-amber-500/30 dark:border-amber-500/20"
                       : "bg-surface border-border hover:border-brand-500/30 hover:shadow-md"
                   )}
                 >
@@ -159,16 +163,16 @@ export default function RLAdvisorPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <p className="text-sm text-foreground/80 leading-relaxed mb-4">{rec.rationale}</p>
-                  
+
                   <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       initial={{ width: 0 }} animate={{ width: `${rec.expected_win_rate * 100}%` }} transition={{ duration: 1, delay: 0.2 }}
                       className={cn("h-full rounded-full", rankBg(i))}
                     />
                   </div>
-                  
+
                   {i === 0 && (
                     <div className="mt-4 pt-4 border-t border-amber-500/10">
                       <a href="/train" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95">
@@ -185,18 +189,18 @@ export default function RLAdvisorPage() {
           {state && armEntries.length > 0 && (
             <div>
               <h2 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
-                <Cpu size={20} className="text-brand-500" /> 
+                <Cpu size={20} className="text-brand-500" />
                 Bandit Posterior
                 <span className="ml-2 px-2 py-0.5 bg-brand-500/10 text-brand-500 rounded text-xs font-semibold uppercase tracking-wider">
                   {state.history_len} recorded outcomes
                 </span>
               </h2>
-              
+
               <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
                 <div className="grid grid-cols-[140px_1fr_50px_50px] gap-4 px-5 py-3 bg-surface-hover/50 border-b border-border text-[10px] font-bold text-slate-500 uppercase tracking-widest text-left">
                   <span>Model</span><span>Posterior Mean Win Rate</span><span className="text-center">α</span><span className="text-center">β</span>
                 </div>
-                
+
                 <div className="divide-y divide-border/50">
                   {armEntries.map(arm => (
                     <div key={arm.name} className="grid grid-cols-[140px_1fr_50px_50px] gap-4 px-5 py-3 items-center hover:bg-surface-hover/30 transition-colors">
@@ -205,7 +209,7 @@ export default function RLAdvisorPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <motion.div 
+                          <motion.div
                             initial={{ width: 0 }} animate={{ width: `${(arm.q_value / maxQ) * 100}%` }} transition={{ duration: 1 }}
                             className="h-full bg-brand-500 rounded-full"
                           />
@@ -235,17 +239,17 @@ export default function RLAdvisorPage() {
       {recs.length === 0 && !loading && (
         <div className="bg-surface border-2 border-dashed border-border rounded-3xl p-16 flex flex-col items-center text-center">
           <div className="w-24 h-24 bg-brand-500/5 rounded-full flex items-center justify-center mb-6">
-             <BrainCircuit size={48} className="text-brand-500/50" strokeWidth={1} />
+            <BrainCircuit size={48} className="text-brand-500/50" strokeWidth={1} />
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-2">Thompson Sampling Bandit</h2>
           <p className="text-slate-500 max-w-lg mb-8 leading-relaxed">
-             The intelligent advisor uses Bayesian Beta-Bernoulli bandits to learn exactly which standard machine learning algorithms perform best for your dataset characteristics. It automatically updates its knowledge base after every training run you perform.
+            The intelligent advisor uses Bayesian Beta-Bernoulli bandits to learn exactly which standard machine learning algorithms perform best for your dataset characteristics. It automatically updates its knowledge base after every training run you perform.
           </p>
-          <button 
-             onClick={loadRecs} 
-             className="px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl shadow-md shadow-brand-500/20 transition-all flex items-center gap-2"
+          <button
+            onClick={loadRecs}
+            className="px-6 py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl shadow-md shadow-brand-500/20 transition-all flex items-center gap-2"
           >
-             <Sparkles size={18} /> Initialize Analysis
+            <Sparkles size={18} /> Initialize Analysis
           </button>
         </div>
       )}

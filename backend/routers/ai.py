@@ -51,8 +51,8 @@ def _column_info(sess) -> List[Dict]:
 async def ai_schema(session_id: str):
     sess = _require_session(session_id)
     col_info = _column_info(sess)
-    narrative = ai.narrate_schema(col_info, sess.filename or "dataset")
-    return {"narrative": narrative, "n_cols": len(col_info)}
+    result = ai.narrate_schema(col_info, sess.filename or "dataset")
+    return {"narrative": result["text"], "ok": result["ok"], "error": result["error"], "n_cols": len(col_info)}
 
 
 # ── Preprocessing narrator ─────────────────────────────────────────────────────
@@ -67,11 +67,11 @@ class PreprocessNarrateRequest(BaseModel):
 
 @router.post("/preprocess-narrate")
 async def narrate_step(req: PreprocessNarrateRequest):
-    narrative = ai.narrate_preprocessing_step(
+    result = ai.narrate_preprocessing_step(
         req.step_type, req.params, req.rows_before,
         req.rows_after, req.affected_columns
     )
-    return {"narrative": narrative}
+    return {"narrative": result["text"], "ok": result["ok"], "error": result["error"]}
 
 
 # ── Feature suggestions ───────────────────────────────────────────────────────
@@ -80,8 +80,8 @@ async def narrate_step(req: PreprocessNarrateRequest):
 async def ai_suggest_features(session_id: str, target_col: str, task_type: str):
     sess = _require_session(session_id)
     col_info = _column_info(sess)
-    suggestions = ai.suggest_features(col_info, task_type, target_col)
-    return {"suggestions": suggestions}
+    result = ai.suggest_features(col_info, task_type, target_col)
+    return {"suggestions": result["text"], "ok": result["ok"], "error": result["error"]}
 
 
 # ── Model recommendation ──────────────────────────────────────────────────────
@@ -93,8 +93,8 @@ async def ai_recommend_model(session_id: str, task_type: str, target_col: str):
     col_info = _column_info(sess)
     feat_cols = sess.feature_cols or []
     n_features = len(feat_cols) if feat_cols else len(df.columns) - 1
-    rec = ai.recommend_model(task_type, len(df), n_features, col_info, target_col)
-    return {"recommendation": rec}
+    result = ai.recommend_model(task_type, len(df), n_features, col_info, target_col)
+    return {"recommendation": result["text"], "ok": result["ok"], "error": result["error"]}
 
 
 # ── Metrics interpreter ───────────────────────────────────────────────────────
@@ -114,8 +114,8 @@ async def ai_interpret_metrics(run_id: str):
         coef = model.coef_
         if coef.ndim > 1: coef = np.abs(coef).mean(axis=0)
         fi = dict(zip(rec.feature_cols, [float(v) for v in np.abs(coef)]))
-    interpretation = ai.interpret_metrics(rec.metrics, rec.task_type, rec.model_name, fi)
-    return {"interpretation": interpretation, "model_name": rec.model_name}
+    result = ai.interpret_metrics(rec.metrics, rec.task_type, rec.model_name, fi)
+    return {"interpretation": result["text"], "ok": result["ok"], "error": result["error"], "model_name": rec.model_name}
 
 
 # ── Chart narrator ────────────────────────────────────────────────────────────
@@ -126,8 +126,8 @@ class ChartNarrateRequest(BaseModel):
 
 @router.post("/narrate-chart")
 async def narrate_chart(req: ChartNarrateRequest):
-    narrative = ai.narrate_chart(req.chart_type, req.chart_insights)
-    return {"narrative": narrative}
+    result = ai.narrate_chart(req.chart_type, req.chart_insights)
+    return {"narrative": result["text"], "ok": result["ok"], "error": result["error"]}
 
 
 # ── Auto-report ────────────────────────────────────────────────────────────────
@@ -145,14 +145,14 @@ async def generate_report(run_id: str, session_id: str):
     if model and hasattr(model, "feature_importances_"):
         fi = dict(zip(rec.feature_cols, [float(v) for v in model.feature_importances_]))
     df = sess.current_df
-    report = ai.generate_report(
+    result = ai.generate_report(
         filename=sess.filename or "dataset",
         n_rows=len(df), n_cols=len(df.columns),
         column_info=col_info, preprocessing_steps=steps,
         model_name=rec.model_name, task_type=rec.task_type,
         metrics=rec.metrics, feature_importance=fi,
     )
-    return {"report": report, "model_name": rec.model_name, "format": "markdown"}
+    return {"report": result["text"], "ok": result["ok"], "error": result["error"], "model_name": rec.model_name, "format": "markdown"}
 
 
 # ── Global chat assistant ─────────────────────────────────────────────────────
@@ -186,8 +186,8 @@ async def ai_chat(req: ChatRequest):
             context["model_name"] = rec.model_name
             context["metrics"] = scalar_metrics
 
-    response = ai.chat(req.message, req.history, context)
-    return {"response": response}
+    result = ai.chat(req.message, req.history, context)
+    return {"response": result["text"], "ok": result["ok"], "error": result["error"]}
 
 
 # ── Prediction explainer ──────────────────────────────────────────────────────
@@ -198,6 +198,10 @@ class ExplainPredRequest(BaseModel):
     inputs: Dict[str, float]
     prediction: Any
     confidence: Optional[float] = None
+
+
+class CompareRunsRequest(BaseModel):
+    run_ids: List[str]
 
 @router.post("/explain-prediction")
 async def explain_prediction(req: ExplainPredRequest):
@@ -217,5 +221,37 @@ async def explain_prediction(req: ExplainPredRequest):
             pass
 
     model_name = rec.model_name if rec else "model"
-    explanation = ai.explain_prediction(req.inputs, req.prediction, req.confidence, model_name, top_shap)
-    return {"explanation": explanation}
+    result = ai.explain_prediction(req.inputs, req.prediction, req.confidence, model_name, top_shap)
+    return {"explanation": result["text"], "ok": result["ok"], "error": result["error"]}
+
+
+@router.post("/compare-runs")
+async def ai_compare_runs(req: CompareRunsRequest):
+    rows: List[Dict[str, Any]] = []
+    for run_id in req.run_ids:
+        rec = registry.get(run_id)
+        if not rec or rec.status != "complete":
+            continue
+        rows.append({
+            "run_id": run_id,
+            "model_name": rec.model_name,
+            "task_type": rec.task_type,
+            "metrics": rec.metrics,
+            "training_time_s": rec.training_time_s,
+        })
+
+    if len(rows) < 2:
+        raise HTTPException(400, "Need at least two completed runs to compare")
+
+    task_type = rows[0]["task_type"]
+    primary_metric = "accuracy" if task_type == "classification" else "r2"
+    rows = sorted(rows, key=lambda r: r["metrics"].get(primary_metric, float("-inf")), reverse=True)
+    result = ai.compare_runs(rows, primary_metric, task_type)
+    return {
+        "comparison": result["text"],
+        "ok": result["ok"],
+        "error": result["error"],
+        "primary_metric": primary_metric,
+        "best_run_id": rows[0]["run_id"],
+        "runner_up_run_id": rows[1]["run_id"],
+    }

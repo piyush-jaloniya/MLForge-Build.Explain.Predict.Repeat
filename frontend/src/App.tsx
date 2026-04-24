@@ -204,14 +204,14 @@ export default function App() {
           animate={isMobile ? { x: sidebarOpen ? 0 : '-100%' } : { width: sidebarOpen ? 240 : 70 }}
           transition={{ type: 'spring', damping: 28, stiffness: 260 }}
           className={cn(
-            "bg-surface border-r border-border flex flex-col shadow-xl shadow-black/5",
+            "bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] text-[var(--text-primary)] flex flex-col shadow-xl shadow-black/5",
             isMobile
               ? "fixed inset-y-0 left-0 z-40 w-[280px] max-w-[82vw]"
               : "relative z-20 flex-shrink-0"
           )}
         >
-          <div className="h-20 flex items-center px-3 border-b border-border justify-between whitespace-nowrap overflow-hidden">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="h-20 flex items-center px-2 border-b border-border justify-center whitespace-nowrap overflow-hidden">
+            <div className="flex items-center gap-3 min-w-0 -ml-2">
               <img src="/icon.ico" alt="MLForge icon" className="w-12 h-12 rounded-md shrink-0 object-cover" />
               <AnimatePresence>
                 {sidebarOpen && (
@@ -221,8 +221,8 @@ export default function App() {
                     exit={{ opacity: 0 }}
                     className="flex flex-col items-start leading-tight min-w-0"
                   >
-                    <span className="font-bold tracking-tight text-foreground text-[18px] truncate">MLForge</span>
-                    <span className="text-[9px] font-semibold tracking-[0.12em] text-slate-500 leading-none">Build. Explain. Predict. Repeat</span>
+                    <span className="font-bold tracking-tight text-[var(--text-primary)] text-[18px] truncate">MLForge</span>
+                    <span className="text-[10px] font-semibold tracking-[0.12em] text-[var(--text-secondary)] leading-none">Build. Explain. Predict. Repeat</span>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -233,7 +233,7 @@ export default function App() {
             {NAV_SECTIONS.map(section => (
               <div key={section.label} className="mb-6 px-3">
                 {sidebarOpen ? (
-                  <div className="px-3 mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{section.label}</div>
+                  <div className="px-3 mb-2 text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{section.label}</div>
                 ) : (
                   <div className="h-4 border-b border-border/50 mb-2 mx-2" />
                 )}
@@ -244,17 +244,17 @@ export default function App() {
                       to={path}
                       end={!!end}
                       className={({ isActive }) => cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all whitespace-nowrap group",
+                        "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all whitespace-nowrap group",
                         isActive
-                          ? "bg-brand-500/10 text-brand-500 font-semibold"
-                          : "text-slate-500 hover:text-foreground hover:bg-surface-hover"
+                          ? "bg-[var(--bg-active)] text-[var(--text-active)] font-semibold"
+                          : "text-[var(--text-secondary)] hover:bg-surface-hover hover:text-[var(--text-primary)]"
                       )}
                       title={!sidebarOpen ? label : undefined}
                     >
-                      <Icon size={18} className={cn("shrink-0 transition-colors cursor-pointer")} />
+                      <Icon size={18} className={cn("shrink-0 transition-colors", sidebarOpen ? "" : "mx-auto")} />
                       <AnimatePresence>
                         {sidebarOpen && (
-                          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm">
+                          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-base font-medium">
                             {label}
                           </motion.span>
                         )}
@@ -379,7 +379,12 @@ export default function App() {
               {notification.type === 'error' ? <AlertCircle size={14} /> : <Bot size={14} />}
             </div>
             <span>{notification.message}</span>
-            <button onClick={clearNotification} className="opacity-50 hover:opacity-100 ml-2">
+            <button
+              onClick={clearNotification}
+              className="opacity-50 hover:opacity-100 ml-2"
+              aria-label="Dismiss notification"
+              title="Dismiss notification"
+            >
               <X size={14} />
             </button>
           </motion.div>

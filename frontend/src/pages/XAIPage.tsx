@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useModelStore, useSessionStore, useUIStore } from '../store'
 import PlotlyChart from '../components/PlotlyChart'
+import DropdownSelect from '../components/DropdownSelect'
 import api from '../api/client'
 import { cn } from '../lib/utils'
-import { 
-  Network, Share2, Orbit, Lightbulb, 
-  RefreshCw, BarChart2, CheckCircle2, ScatterChart, ShieldQuestion 
+import {
+  Network, Share2, Orbit, Lightbulb,
+  RefreshCw, BarChart2, CheckCircle2, ScatterChart, ShieldQuestion
 } from 'lucide-react'
 
 type XAITab = 'shap-beeswarm' | 'shap-waterfall' | 'permutation' | 'feature-importance'
@@ -101,148 +102,149 @@ export default function XAIPage() {
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-6 flex flex-col min-h-full">
-      
+
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-surface border border-border p-6 rounded-3xl shadow-sm relative overflow-hidden">
-        
+
         {/* Decorative Background Glow */}
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-brand-500/10 blur-[60px] rounded-full pointer-events-none" />
 
         <div className="relative z-10">
           <h1 className="text-3xl font-bold text-foreground tracking-tight flex items-center gap-3">
-             <Network className="text-brand-500" size={32} />
-             Explainability Engine
+            <Network className="text-brand-500" size={32} />
+            Explainability Engine
           </h1>
           <p className="text-slate-500 mt-2 font-medium">Understand precisely why your model makes specific predictions.</p>
         </div>
-        
+
         <div className="relative z-10 flex flex-col gap-2 min-w-[250px]">
-           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Target Model</label>
-           <div className="flex items-center gap-2 px-3 py-1 bg-surface-hover border border-border rounded-xl focus-within:border-brand-500 transition-colors">
-              <CheckCircle2 size={16} className="text-brand-500" />
-              <select 
-                value={runId} onChange={e => { setRunId(e.target.value); setActiveRun(e.target.value) }}
-                className="bg-transparent border-none text-sm font-bold focus:outline-none text-foreground py-2 outline-none appearance-none flex-1"
-              >
-                {completedRuns.map(r => <option key={r.run_id} value={r.run_id}>{r.model_name.replace(/_/g, ' ')}</option>)}
-              </select>
-           </div>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Target Model</label>
+          <DropdownSelect
+            value={runId}
+            onChange={(next) => { setRunId(next); setActiveRun(next) }}
+            ariaLabel="Target model"
+            icon={<CheckCircle2 size={16} />}
+            placeholder="No models trained"
+            disabled={completedRuns.length === 0}
+            options={completedRuns.map(r => ({ value: r.run_id, label: r.model_name.replace(/_/g, ' ') }))}
+            buttonClassName="w-full"
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1">
-        
+
         {/* Navigation Sidebar */}
         <div className="lg:col-span-3 space-y-4">
-           <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-2">Analysis Methods</h3>
-           <div className="bg-surface border border-border rounded-3xl p-3 shadow-sm flex flex-col gap-2 relative z-10">
-              {tabs.map(t => {
-                 const Icon = t.icon
-                 const isActive = tab === t.id
-                 return (
-                   <button 
-                     key={t.id} onClick={() => setTab(t.id)} 
-                     className={cn(
-                        "flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all text-left group",
-                        isActive 
-                          ? "bg-brand-500 text-white shadow-md shadow-brand-500/20" 
-                          : "text-slate-500 hover:text-foreground hover:bg-surface-hover"
-                     )}
-                   >
-                      <Icon size={18} className={cn(isActive ? "text-white" : "text-slate-400 group-hover:text-brand-500")} />
-                      <span>{t.label}</span>
-                   </button>
-                 )
-              })}
-           </div>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-2">Analysis Methods</h3>
+          <div className="bg-surface border border-border rounded-3xl p-3 shadow-sm flex flex-col gap-2 relative z-10">
+            {tabs.map(t => {
+              const Icon = t.icon
+              const isActive = tab === t.id
+              return (
+                <button
+                  key={t.id} onClick={() => setTab(t.id)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all text-left group",
+                    isActive
+                      ? "bg-brand-500 text-white shadow-md shadow-brand-500/20"
+                      : "text-slate-500 hover:text-foreground hover:bg-surface-hover"
+                  )}
+                >
+                  <Icon size={18} className={cn(isActive ? "text-white" : "text-slate-400 group-hover:text-brand-500")} />
+                  <span>{t.label}</span>
+                </button>
+              )
+            })}
+          </div>
 
-           {/* Active Tab Helper */}
-           <motion.div 
-             key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-             className="bg-brand-500/5 border border-brand-500/20 rounded-3xl p-5 shadow-sm"
-           >
-              <h4 className="flex items-center gap-2 text-brand-600 dark:text-brand-400 font-bold text-xs uppercase tracking-wide mb-2">
-                 <Lightbulb size={16} /> How to read this
-              </h4>
-              <p className="text-xs text-brand-600/70 dark:text-brand-400/80 leading-relaxed font-medium">
-                 {activeTabDetails?.tip}
-              </p>
-           </motion.div>
+          {/* Active Tab Helper */}
+          <motion.div
+            key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-brand-500/5 border border-brand-500/20 rounded-3xl p-5 shadow-sm"
+          >
+            <h4 className="flex items-center gap-2 text-brand-600 dark:text-brand-400 font-bold text-xs uppercase tracking-wide mb-2">
+              <Lightbulb size={16} /> How to read this
+            </h4>
+            <p className="text-xs text-brand-600/70 dark:text-brand-400/80 leading-relaxed font-medium">
+              {activeTabDetails?.tip}
+            </p>
+          </motion.div>
         </div>
 
         {/* Content Area */}
         <div className="lg:col-span-9 bg-surface border border-border rounded-3xl p-6 shadow-sm flex flex-col min-h-[500px] relative overflow-hidden">
-           
-           {/* Header */}
-           <div className="flex border-b border-border pb-4 mb-4">
-              <h3 className="font-bold text-foreground text-sm tracking-wide uppercase flex items-center gap-2">
-                 {activeTabDetails?.icon && <activeTabDetails.icon size={18} className="text-brand-500" />} {activeTabDetails?.label}
-              </h3>
-           </div>
 
-           <div className="flex-1 relative flex flex-col">
-              <AnimatePresence mode="wait">
-                 {isLoading ? (
-                    <motion.div 
-                      key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center bg-surface/50 backdrop-blur-sm z-10 gap-4"
-                    >
-                       <RefreshCw size={40} className="animate-spin text-brand-500" />
-                       <div className="text-sm font-bold uppercase tracking-widest text-foreground">Computing Explanations...</div>
-                       <div className="text-xs font-semibold text-slate-500 text-center max-w-xs">XAI algorithms are computationally expensive. Please wait.</div>
-                    </motion.div>
-                 ) : (chart || rawData) ? (
-                    <motion.div 
-                      key="content" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                      className="flex-1 w-full bg-surface-hover/30 rounded-2xl border border-border flex items-center justify-center p-2 relative overflow-hidden"
-                    >
-                       {chart && <PlotlyChart figure={chart} height={500} />}
-                       
-                       {rawData && tab === 'permutation' && (
-                         <div className="absolute inset-0 overflow-y-auto p-6 md:p-10 custom-scrollbar flex flex-col">
-                           <h3 className="font-bold text-lg text-foreground tracking-tight mb-8">Mean Validation Loss Degradation</h3>
-                           <div className="space-y-6 max-w-3xl">
-                             {Object.entries(rawData.permutation_importance || {}).slice(0, 15).map(([feat, imp]: [string, any], index) => {
-                               const intensity = Math.max(0, Math.min(100, imp.mean * 100))
-                               const isPositive = imp.mean > 0
-                               return (
-                                 <motion.div 
-                                    initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}
-                                    key={feat} className="relative group"
-                                  >
-                                   <div className="flex justify-between items-end mb-2 text-sm">
-                                     <span className="font-bold text-foreground">{feat}</span>
-                                     <span className="font-mono text-xs text-slate-500 bg-surface-hover px-2 py-1 rounded">
-                                        {imp.mean.toFixed(4)} <span className="text-slate-400">±{imp.std.toFixed(4)}</span>
-                                     </span>
-                                   </div>
-                                   <div className="flex gap-1 h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
-                                     <motion.div 
-                                       initial={{ width: 0 }} animate={{ width: `${intensity}%` }} transition={{ duration: 1, delay: 0.2 }}
-                                       className={cn(
-                                         "h-full rounded-full relative z-10",
-                                         isPositive ? "bg-brand-500" : "bg-red-500 pointer-events-none opacity-50"
-                                       )} 
-                                     />
-                                   </div>
-                                 </motion.div>
-                               )
-                             })}
-                           </div>
-                         </div>
-                       )}
-                    </motion.div>
-                 ) : (
-                    <motion.div 
-                      key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-400"
-                    >
-                       <ShieldQuestion size={64} className="opacity-20" />
-                       <div className="text-sm font-medium tracking-wide max-w-[200px] text-center">Data formulation failed. Unable to render explanatory charts.</div>
-                    </motion.div>
-                 )}
-              </AnimatePresence>
-           </div>
+          {/* Header */}
+          <div className="flex border-b border-border pb-4 mb-4">
+            <h3 className="font-bold text-foreground text-sm tracking-wide uppercase flex items-center gap-2">
+              {activeTabDetails?.icon && <activeTabDetails.icon size={18} className="text-brand-500" />} {activeTabDetails?.label}
+            </h3>
+          </div>
+
+          <div className="flex-1 relative flex flex-col">
+            <AnimatePresence mode="wait">
+              {isLoading ? (
+                <motion.div
+                  key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-surface/50 backdrop-blur-sm z-10 gap-4"
+                >
+                  <RefreshCw size={40} className="animate-spin text-brand-500" />
+                  <div className="text-sm font-bold uppercase tracking-widest text-foreground">Computing Explanations...</div>
+                  <div className="text-xs font-semibold text-slate-500 text-center max-w-xs">XAI algorithms are computationally expensive. Please wait.</div>
+                </motion.div>
+              ) : (chart || rawData) ? (
+                <motion.div
+                  key="content" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                  className="flex-1 w-full bg-surface-hover/30 rounded-2xl border border-border flex items-center justify-center p-2 relative overflow-hidden"
+                >
+                  {chart && <PlotlyChart figure={chart} height={500} />}
+
+                  {rawData && tab === 'permutation' && (
+                    <div className="absolute inset-0 overflow-y-auto p-6 md:p-10 custom-scrollbar flex flex-col">
+                      <h3 className="font-bold text-lg text-foreground tracking-tight mb-8">Mean Validation Loss Degradation</h3>
+                      <div className="space-y-6 max-w-3xl">
+                        {Object.entries(rawData.permutation_importance || {}).slice(0, 15).map(([feat, imp]: [string, any], index) => {
+                          const intensity = Math.max(0, Math.min(100, imp.mean * 100))
+                          const isPositive = imp.mean > 0
+                          return (
+                            <motion.div
+                              initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.05 }}
+                              key={feat} className="relative group"
+                            >
+                              <div className="flex justify-between items-end mb-2 text-sm">
+                                <span className="font-bold text-foreground">{feat}</span>
+                                <span className="font-mono text-xs text-slate-500 bg-surface-hover px-2 py-1 rounded">
+                                  {imp.mean.toFixed(4)} <span className="text-slate-400">±{imp.std.toFixed(4)}</span>
+                                </span>
+                              </div>
+                              <div className="flex gap-1 h-3 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative">
+                                <motion.div
+                                  initial={{ width: 0 }} animate={{ width: `${intensity}%` }} transition={{ duration: 1, delay: 0.2 }}
+                                  className={cn(
+                                    "h-full rounded-full relative z-10",
+                                    isPositive ? "bg-brand-500" : "bg-red-500 pointer-events-none opacity-50"
+                                  )}
+                                />
+                              </div>
+                            </motion.div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-400"
+                >
+                  <ShieldQuestion size={64} className="opacity-20" />
+                  <div className="text-sm font-medium tracking-wide max-w-[200px] text-center">Data formulation failed. Unable to render explanatory charts.</div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
       </div>

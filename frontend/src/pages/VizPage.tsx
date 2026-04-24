@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSessionStore, useUIStore } from '../store'
 import PlotlyChart from '../components/PlotlyChart'
+import DropdownSelect from '../components/DropdownSelect'
 import api from '../api/client'
 import { cn } from '../lib/utils'
-import { 
-  BarChart3, Settings2, BoxSelect, ScatterChart, 
-  TableProperties, SearchX, LineChart, SlidersHorizontal, Image, MousePointerClick 
+import {
+  BarChart3, Settings2, BoxSelect, ScatterChart,
+  TableProperties, SearchX, LineChart, SlidersHorizontal, Image, MousePointerClick
 } from 'lucide-react'
 
 type ChartType = 'histogram' | 'boxplot' | 'scatter' | 'correlation' | 'missing' | 'pairplot'
@@ -102,36 +103,36 @@ export default function VizPage() {
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-6">
       <div className="mb-4">
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-           <BarChart3 className="text-brand-500" size={32} />
-           Exploratory Data Analysis
+          <BarChart3 className="text-brand-500" size={32} />
+          Exploratory Data Analysis
         </h1>
         <p className="text-slate-500 mt-2 font-medium">
-           Generate high-quality visualizations to understand your dataset's underlying structures.
+          Generate high-quality visualizations to understand your dataset's underlying structures.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Left Column: Controls */}
         <div className="lg:col-span-4 space-y-6">
-          
+
           <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 bg-surface-hover/50 border-b border-border flex items-center gap-2">
-               <Settings2 size={18} className="text-brand-500" />
-               <h3 className="font-bold text-foreground text-sm tracking-wide uppercase">Chart Type</h3>
+              <Settings2 size={18} className="text-brand-500" />
+              <h3 className="font-bold text-foreground text-sm tracking-wide uppercase">Chart Type</h3>
             </div>
             <div className="p-2 grid grid-cols-2 gap-2">
               {CHART_TYPES.map(t => {
                 const Icon = t.icon
                 const isActive = activeChart === t.id
                 return (
-                  <button 
-                    key={t.id} 
-                    onClick={() => setActiveChart(t.id)} 
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveChart(t.id)}
                     className={cn(
                       "p-3 rounded-xl flex flex-col gap-2 items-start text-left transition-all border",
-                      isActive 
-                        ? "bg-brand-500/10 border-brand-500 text-brand-500 shadow-sm" 
+                      isActive
+                        ? "bg-brand-500/10 border-brand-500 text-brand-500 shadow-sm"
                         : "bg-surface border-transparent text-slate-500 hover:text-foreground hover:bg-surface-hover hover:border-border"
                     )}
                   >
@@ -147,23 +148,24 @@ export default function VizPage() {
 
           <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 bg-surface-hover/50 border-b border-border flex items-center gap-2">
-               <SlidersHorizontal size={18} className="text-brand-500" />
-               <h3 className="font-bold text-foreground text-sm tracking-wide uppercase">Configuration</h3>
+              <SlidersHorizontal size={18} className="text-brand-500" />
+              <h3 className="font-bold text-foreground text-sm tracking-wide uppercase">Configuration</h3>
             </div>
-            
+
             <div className="p-5 space-y-5">
               {(activeChart === 'histogram' || activeChart === 'boxplot' || activeChart === 'scatter') && (
                 <div className="space-y-2">
                   <label className="block text-xs font-bold tracking-wider text-slate-500 uppercase">
                     {activeChart === 'scatter' ? 'X-Axis Column' : 'Primary Column'}
                   </label>
-                  <select 
-                    value={col1} onChange={e => setCol1(e.target.value)} 
-                    className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm font-medium focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500/50 transition-all"
-                  >
-                    <option value="">-- Autoselect --</option>
-                    {cols.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <DropdownSelect
+                    value={col1}
+                    onChange={setCol1}
+                    ariaLabel={activeChart === 'scatter' ? 'X-Axis Column' : 'Primary Column'}
+                    placeholder="-- Autoselect --"
+                    options={[{ value: '', label: '-- Autoselect --' }, ...cols.map(c => ({ value: c, label: c }))]}
+                    buttonClassName="w-full"
+                  />
                 </div>
               )}
 
@@ -173,9 +175,11 @@ export default function VizPage() {
                     <label>Bin Count</label>
                     <span className="text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded">{bins}</span>
                   </div>
-                  <input 
+                  <input
                     type="range" min={5} max={100} value={bins} onChange={e => setBins(+e.target.value)}
-                    className="w-full accent-brand-500" 
+                    aria-label="Bin count"
+                    title="Bin count"
+                    className="w-full accent-brand-500"
                   />
                 </div>
               )}
@@ -186,13 +190,14 @@ export default function VizPage() {
                     {activeChart === 'scatter' ? 'Y-Axis Column' : 'Group By Column'}
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">OPTIONAL</span>
                   </label>
-                  <select 
-                    value={col2} onChange={e => setCol2(e.target.value)} 
-                    className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm font-medium focus:outline-none focus:border-brand-500 transition-all"
-                  >
-                    <option value="">-- None --</option>
-                    {cols.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <DropdownSelect
+                    value={col2}
+                    onChange={setCol2}
+                    ariaLabel={activeChart === 'scatter' ? 'Y-Axis Column' : 'Group By Column'}
+                    placeholder="-- None --"
+                    options={[{ value: '', label: '-- None --' }, ...cols.map(c => ({ value: c, label: c }))]}
+                    buttonClassName="w-full"
+                  />
                 </div>
               )}
 
@@ -202,13 +207,14 @@ export default function VizPage() {
                     Color Grouping
                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">OPTIONAL</span>
                   </label>
-                  <select 
-                    value={colorCol} onChange={e => setColorCol(e.target.value)} 
-                    className="w-full px-3 py-2.5 bg-surface border border-border rounded-lg text-sm font-medium focus:outline-none focus:border-brand-500 transition-all"
-                  >
-                    <option value="">-- None --</option>
-                    {cols.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <DropdownSelect
+                    value={colorCol}
+                    onChange={setColorCol}
+                    ariaLabel="Color Grouping"
+                    placeholder="-- None --"
+                    options={[{ value: '', label: '-- None --' }, ...cols.map(c => ({ value: c, label: c }))]}
+                    buttonClassName="w-full"
+                  />
                 </div>
               )}
 
@@ -218,13 +224,13 @@ export default function VizPage() {
                 </div>
               )}
 
-              <button 
-                onClick={handleGenerate} 
-                disabled={currentLoading} 
+              <button
+                onClick={handleGenerate}
+                disabled={currentLoading}
                 className={cn(
                   "w-full py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all mt-6 shadow-sm shadow-brand-500/20 active:scale-[0.98]",
-                  currentLoading 
-                    ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed" 
+                  currentLoading
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
                     : "bg-brand-500 hover:bg-brand-600 border border-brand-400/50 text-white"
                 )}
               >
@@ -247,54 +253,54 @@ export default function VizPage() {
 
         {/* Right Column: Visualization Canvas */}
         <div className="lg:col-span-8">
-           <div className="bg-surface border border-border rounded-2xl shadow-sm min-h-[600px] flex flex-col overflow-hidden relative">
-             <div className="p-4 border-b border-border flex justify-between items-center bg-surface-hover/30">
-               <h3 className="font-bold text-foreground text-sm tracking-wide uppercase flex items-center gap-2">
-                 Display Canvas
-                 {currentChart && <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full">RENDERED</span>}
-               </h3>
-               {currentChart && (
-                 <span className="text-xs text-slate-400 font-medium">Interactive Plotly.js rendered plot</span>
-               )}
-             </div>
+          <div className="bg-surface border border-border rounded-2xl shadow-sm min-h-[600px] flex flex-col overflow-hidden relative">
+            <div className="p-4 border-b border-border flex justify-between items-center bg-surface-hover/30">
+              <h3 className="font-bold text-foreground text-sm tracking-wide uppercase flex items-center gap-2">
+                Display Canvas
+                {currentChart && <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full">RENDERED</span>}
+              </h3>
+              {currentChart && (
+                <span className="text-xs text-slate-400 font-medium">Interactive Plotly.js rendered plot</span>
+              )}
+            </div>
 
-             <div className="flex-1 p-2 relative flex items-center justify-center bg-background/50">
-               <AnimatePresence mode="wait">
-                 {currentChart ? (
-                   <motion.div 
-                     key={currentKey}
-                     initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-                     className="w-full h-[550px] bg-surface rounded-xl overflow-hidden shadow-inner border border-border flex items-center justify-center"
-                   >
-                     <PlotlyChart figure={currentChart} height={550} />
-                   </motion.div>
-                 ) : (
-                   <motion.div 
-                     initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                     className="flex flex-col items-center justify-center text-slate-400 gap-4"
-                   >
-                     <div className="w-20 h-20 bg-surface-hover rounded-full flex items-center justify-center border border-border shadow-sm">
-                        <MousePointerClick className="text-slate-300" size={32} />
-                     </div>
-                     <p className="text-sm font-medium tracking-wide">Configure chart limits and click <span className="text-foreground">Render Chart</span></p>
-                   </motion.div>
-                 )}
-               </AnimatePresence>
+            <div className="flex-1 p-2 relative flex items-center justify-center bg-background/50">
+              <AnimatePresence mode="wait">
+                {currentChart ? (
+                  <motion.div
+                    key={currentKey}
+                    initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                    className="w-full h-[550px] bg-surface rounded-xl overflow-hidden shadow-inner border border-border flex items-center justify-center"
+                  >
+                    <PlotlyChart figure={currentChart} height={550} />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="flex flex-col items-center justify-center text-slate-400 gap-4"
+                  >
+                    <div className="w-20 h-20 bg-surface-hover rounded-full flex items-center justify-center border border-border shadow-sm">
+                      <MousePointerClick className="text-slate-300" size={32} />
+                    </div>
+                    <p className="text-sm font-medium tracking-wide">Configure chart limits and click <span className="text-foreground">Render Chart</span></p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-               {/* Loading Overlay */}
-               {currentLoading && (
-                 <motion.div 
-                   initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                   className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex items-center justify-center z-10"
-                 >
-                   <div className="bg-surface px-6 py-4 rounded-2xl shadow-xl border border-border flex items-center gap-4">
-                     <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                     <span className="font-bold text-sm text-foreground">Computing Visualization...</span>
-                   </div>
-                 </motion.div>
-               )}
-             </div>
-           </div>
+              {/* Loading Overlay */}
+              {currentLoading && (
+                <motion.div
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                  className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex items-center justify-center z-10"
+                >
+                  <div className="bg-surface px-6 py-4 rounded-2xl shadow-xl border border-border flex items-center gap-4">
+                    <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="font-bold text-sm text-foreground">Computing Visualization...</span>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </div>
         </div>
 
       </div>

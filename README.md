@@ -37,7 +37,7 @@ MLForge/
 │   └── visualizations/       18 Plotly chart builders
 │
 ├── ai_services/
-│   ├── gemini/service.py     9 Gemini 2.0 Flash AI functions
+│   ├── gemini/service.py     9 Gemini 2.5 Flash AI functions
 │   └── rl_advisor/bandit.py  Thompson Sampling model advisor
 │
 ├── frontend/                 React 19 + Vite + Zustand
